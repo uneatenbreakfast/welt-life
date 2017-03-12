@@ -67,6 +67,9 @@ export class TargetMemoryObject{
                 this.angle = 90;
             }
         }
+
+        var baseSliceAngle = 36;
+        this.angle = Math.floor(this.angle  / baseSliceAngle) * baseSliceAngle;
         
     }
 

@@ -1,3 +1,4 @@
+import { NeuralBranch } from '../NeuralComponents/NeuralBranch';
 import { NeuralReader } from '../NeuralComponents/NeuralReader';
 import { TargetMemoryObject } from './TargetMemoryObject';
 import { IWorldObject, WorldTypes } from './Display/IWorldObject';
@@ -16,6 +17,9 @@ export class Creature extends LoadedDisplaySprite implements IWorldObject {
   private walkSpeed:number;
   private runSpeed:number;
 
+  private brainNetwork;
+  private greyMatter:NeuralBranch[];
+
   private _world:WorldController;
 
   constructor(armature:string){
@@ -24,6 +28,14 @@ export class Creature extends LoadedDisplaySprite implements IWorldObject {
     // Creature knows about:
     this._world = WorldController.getInstance();
     this.memoryBank = new Array<TargetMemoryObject>();
+    this.greyMatter = new Array<NeuralBranch>();
+
+    var availableActions = ["left","right","up","down","stand"];
+    for(var i=0; i < 20; i++){
+      var n = new NeuralBranch();
+      n.generate(availableActions);
+      this.greyMatter.push(n);
+    }
 
     // Stats
     this.walkSpeed = 2;
@@ -43,15 +55,11 @@ export class Creature extends LoadedDisplaySprite implements IWorldObject {
     var distanceToTarget:number = targetFromMemory.newDistance;
     var angleToTarget:number = targetFromMemory.angle;
 
-    var inputs = [distanceToTarget, angleToTarget];
+    var inputs = [angleToTarget];
 
-    var availableActions = ["left","right","up","down","stand"];
+    
 
-    inputs.forEach(input => {
-      availableActions.forEach(action=>{
-        NeuralReader.Read();
-      })
-    });
+    
     //--------
     targetFromMemory.expireOldCalculations();
   }
