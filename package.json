@@ -1,0 +1,31 @@
+{
+  "name": "package",
+  "version": "1.0.0",
+  "description": "",
+  "main": "js/app.js",
+  "dependencies": {
+    "browserify": "^13.1.0",
+    "exorcist": "^0.4.0",
+    "fs": "0.0.1-security",
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.1",
+    "gulp-load-plugins": "^1.2.4",
+    "gulp-sourcemaps": "^1.6.0",
+    "gulp-typescript": "^2.13.6",
+    "pixi-spine": "^1.0.28",
+    "tsify": "^1.0.4",
+    "typescript": "^2.1.5",
+    "vinyl-source-stream": "^1.1.0"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.18.5",
+    "gulp": "^3.9.1",
+    "gulp-sourcemaps": "^1.11.0",
+    "gulp-uglify": "^2.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,53 @@
+@font-face {
+  font-family: 'Roboto Condensed';
+  font-style: normal;
+  font-weight: 400;
+  src: url(../fonts/robotocondensed.woff2) format('woff2');
+}
+
+body{
+    margin: 0;
+    padding: 0;
+    background-color: #000000;
+    font-family: 'Roboto Condensed', sans-serif;
+    overflow: hidden;
+}
+
+.dropzone-theme{
+    display: block;
+    position: absolute;
+    left: 60%;
+    right: 0;
+    bottom: 0;
+    top: 0;
+
+    outline: 2px dashed #92b0b3;
+    outline-offset: -10px;
+    -webkit-transition: outline-offset .15s ease-in-out, background-color .15s linear;
+    transition: outline-offset .15s ease-in-out, background-color .15s linear;
+
+    font-size: 1.25rem;
+    text-align: center;
+    background-color: #c8dadf;
+    padding: 100px 20px;
+}
+.dz-drag-hover{
+    outline-offset: -20px;
+    background: white;
+}
+
+.dz-message, .dz-file-preview{
+    text-align: center;
+}
+.dz-success-mark, .dz-error-mark{
+    display: inline-block;
+}
+.floating-element{
+    font-family: 'Roboto Condensed', sans-serif;
+    position: absolute;
+    padding: 5px 0 5px 0;
+    border: none;
+    background: none;
+    outline: none;
+    font-size: 16pt;
+}

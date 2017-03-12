@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "allowJs" : true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "outDir": "app/src",
+        "sourceMap": true
+    },
+    "compileOnSave": true,
+    "filesGlob": [
+      "app/ts/**/*.ts",
+      "typings/**/*.d.ts"
+    ],
+    "exclude": [
+       "node_modules"
+    ]
+}
