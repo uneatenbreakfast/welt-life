@@ -14,11 +14,14 @@ export class LoadedDisplaySprite{
 
   private scaleSize:number;
   private currentAnimation:string;
+  public markAsDeleted:boolean;
+
 
   constructor(armature:string) {
     this.spriteStorage = new SpriteStorage();
     this.dragonFactory = this.spriteStorage.getPixiFactory();
     this.scaleSize = 0.4;
+    this.markAsDeleted = false;
 
     var char = this.spriteStorage.getSpriteData("hero_data");
     if(char != null){
@@ -41,6 +44,11 @@ export class LoadedDisplaySprite{
   public scaleX(num:number):void{
     this._sprite.scale.x = this.scaleSize * num;
     this._sprite.scale.y = this.scaleSize;
+  }
+
+  public resize(num:number):void{
+    this.scaleSize = num;
+    this.scaleX(1);
   }
 
  public Animate(animationName:string):void{

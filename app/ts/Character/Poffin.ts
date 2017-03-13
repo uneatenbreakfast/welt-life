@@ -10,9 +10,14 @@ export class Poffin extends LoadedDisplaySprite implements IWorldObject {
   constructor(){
     super("Poffin");
 
+    this.markAsDeleted = false;
     this.type = WorldTypes.FOOD;
-    this.id = Math.random() * 9999999999999;
+    this.id = Math.floor(Math.random() * 99999999999999);
 
+  }
+
+  public eaten():void{
+    this.markAsDeleted = true;
   }
 
 }

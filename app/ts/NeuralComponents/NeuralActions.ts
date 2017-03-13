@@ -1,3 +1,4 @@
+import { Func } from '../World/Func';
 export class NeuralActions{
     public action:ActionTypes;
     public valToCompare:any;
@@ -8,7 +9,7 @@ export class NeuralActions{
 
     static getComparator():ActionTypes{
         var conjuctions = [ActionTypes.LESS_THAN, ActionTypes.GREATER_THAN, ActionTypes.EQUAL_TO]
-        return conjuctions[Math.random() * conjuctions.length];
+        return Func.Sample(conjuctions);
     }
 }
 
