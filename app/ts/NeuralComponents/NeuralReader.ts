@@ -1,8 +1,9 @@
+import { Brain } from './Brain';
 import { ActionTypes, NeuralActions } from './NeuralActions';
-import { NeuronRating } from './NeuronRating';
 import { Creature } from '../Character/Creature';
+import { NeuronMemory } from "./NeuronMemory";
 export class NeuralReader{
-    public static CarryOutAction(cre:Creature, chosenOption:NeuronRating, inputs:Array<any>):void{
+    public static CarryOutAction(cre:Creature, chosenOption:NeuronMemory, inputs:Array<any>, brain:Brain):void{
 
         var res = "";
         chosenOption.neuralBranch.actions.forEach(action => {
@@ -35,5 +36,9 @@ export class NeuralReader{
                     break;
             }
         });
+
+
+        chosenOption.numberOfTimesUsed++;
+        brain.remember(chosenOption);
     }
 }

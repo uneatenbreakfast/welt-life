@@ -19,14 +19,6 @@ tcs -w
 
 
 
-// ------
-// Gulp
-// Run to watch and compile Typescript and compile js files into single file
-// browserify is needed to be run so it crawls all the js files and brings in
-// any sources it references
-// ------
-
-gulp watch-all
 
 
 //----------------------------------------
@@ -39,6 +31,16 @@ gulp watch-all
 
 export/private/protected = public/private/protected
     (protected = own class and derivatives can access as well)
+
+
+// ------
+// Gulp
+// Run to watch and compile Typescript and compile js files into single file
+// browserify is needed to be run so it crawls all the js files and brings in
+// any sources it references
+// ------
+
+gulp watch-all
 
 
 //----------------------------------------

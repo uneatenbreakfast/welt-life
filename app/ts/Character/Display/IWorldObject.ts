@@ -9,6 +9,6 @@ export interface IWorldObject{
 }
 
 export enum WorldTypes{
-  CREATURE = 1,
-  FOOD = 2
+  CREATURE ,
+  FOOD 
 }

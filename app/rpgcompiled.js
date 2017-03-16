@@ -69,7 +69,6 @@ var __extends = (this && this.__extends) || function (d, b) {
 };
 var Func_1 = require("../World/Func");
 var Brain_1 = require("../NeuralComponents/Brain");
-var NeuralBranch_1 = require("../NeuralComponents/NeuralBranch");
 var NeuralReader_1 = require("../NeuralComponents/NeuralReader");
 var TargetMemoryObject_1 = require("./TargetMemoryObject");
 var IWorldObject_1 = require("./Display/IWorldObject");
@@ -84,14 +83,6 @@ var Creature = (function (_super) {
         _this._world = WorldController_1.WorldController.getInstance();
         _this.brain = new Brain_1.Brain();
         _this.memoryBank = new Array();
-        _this.greyMatter = new Array();
-        var availableActions = ["left", "right", "up", "down", "stand"];
-        for (var i = 0; i < 20; i++) {
-            var n = new NeuralBranch_1.NeuralBranch();
-            n.generate(availableActions);
-            _this.greyMatter.push(n);
-        }
-        _this.brain.AddOptions(_this.greyMatter);
         // Stats
         _this.hp = 1000;
         _this.walkSpeed = 2;
@@ -117,8 +108,8 @@ var Creature = (function (_super) {
         this.hp += 1000;
         this._world.reproduce(this.brain, this);
     };
-    Creature.prototype.addBrain = function (brainToAdd) {
-        this.brain.AddOptions(brainToAdd.getOptions());
+    Creature.prototype.addParentMemories = function (brainToAdd) {
+        this.brain.addMemories(brainToAdd.getMemories());
     };
     Creature.prototype.move = function (action) {
         switch (action) {
@@ -160,19 +151,11 @@ var Creature = (function (_super) {
         //--------
         var distanceToTarget = targetFromMemory.newDistance;
         var angleToTarget = targetFromMemory.angle;
-        var inputs = [angleToTarget, targetFromMemory.worldObject.type];
+        var inputs = [angleToTarget, IWorldObject_1.WorldTypes[targetFromMemory.worldObject.type]];
         var optionsForTheseInputs = this.brain.getBranchesBasedOnInput(inputs);
         // Pick option
-        var chosenOption = Func_1.Func.Sample(optionsForTheseInputs); // need to favour higher values
-        NeuralReader_1.NeuralReader.CarryOutAction(this, chosenOption, inputs);
-        chosenOption.value++;
-        this.brain.remember(chosenOption);
-        //
-        // pick GA Tree based on value and randomness - based on given inputs 
-        // 
-        // check if it's any closer to target (need to come up with memory for running away from targets)
-        // reassign fit value
-        //--------
+        var chosenOption = Func_1.Func.Sample(optionsForTheseInputs);
+        NeuralReader_1.NeuralReader.CarryOutAction(this, chosenOption, inputs, this.brain);
         targetFromMemory.expireOldCalculations();
     };
     Creature.prototype.findTarget = function () {
@@ -196,7 +179,7 @@ var Creature = (function (_super) {
     return Creature;
 }(DisplayCharacter_1.LoadedDisplaySprite));
 exports.Creature = Creature;
-},{"../NeuralComponents/Brain":8,"../NeuralComponents/NeuralBranch":10,"../NeuralComponents/NeuralReader":11,"../Settings":15,"../World/Func":16,"../World/WorldController":18,"./Display/DisplayCharacter":4,"./Display/IWorldObject":5,"./TargetMemoryObject":7}],3:[function(require,module,exports){
+},{"../NeuralComponents/Brain":8,"../NeuralComponents/NeuralReader":11,"../Settings":15,"../World/Func":16,"../World/WorldController":18,"./Display/DisplayCharacter":4,"./Display/IWorldObject":5,"./TargetMemoryObject":7}],3:[function(require,module,exports){
 "use strict";
 var CreatureStats = (function () {
     function CreatureStats() {
@@ -292,8 +275,8 @@ exports.LoadedDisplaySprite = LoadedDisplaySprite;
 "use strict";
 var WorldTypes;
 (function (WorldTypes) {
-    WorldTypes[WorldTypes["CREATURE"] = 1] = "CREATURE";
-    WorldTypes[WorldTypes["FOOD"] = 2] = "FOOD";
+    WorldTypes[WorldTypes["CREATURE"] = 0] = "CREATURE";
+    WorldTypes[WorldTypes["FOOD"] = 1] = "FOOD";
 })(WorldTypes = exports.WorldTypes || (exports.WorldTypes = {}));
 },{}],6:[function(require,module,exports){
 "use strict";
@@ -382,55 +365,74 @@ exports.TargetMemoryObject = TargetMemoryObject;
 },{}],8:[function(require,module,exports){
 "use strict";
 var Func_1 = require("../World/Func");
-var NeuronRating_1 = require("./NeuronRating");
+var NeuralBranch_1 = require("./NeuralBranch");
+var NeuronMemory_1 = require("./NeuronMemory");
 var Brain = (function () {
     function Brain() {
         this.memory = new Array();
         this.greyMatter = new Array();
+        this.usedInputVNeuralBranch = new Array();
+        var availableActions = ["left", "right", "up", "down", "stand"];
+        for (var i = 0; i < 20; i++) {
+            var n = new NeuralBranch_1.NeuralBranch();
+            n.generate(availableActions);
+            this.greyMatter.push(n);
+        }
     }
     Brain.prototype.getBranchesBasedOnInput = function (inputs) {
+        var _this = this;
         var res = new Array();
-        var usedNeurons = [];
+        var inputsStr = inputs.join("-");
+        if (this.usedInputVNeuralBranch[inputsStr] == null) {
+            this.usedInputVNeuralBranch[inputsStr] = [];
+        }
         this.memory.forEach(function (neuron) {
             if (neuron.hasInputs(inputs)) {
                 res.push(neuron);
-                usedNeurons[neuron.neuralBranch.id] = true;
+                _this.usedInputVNeuralBranch[inputsStr][neuron.neuralBranch.id] = true;
             }
         });
-        res = res.concat(this.getSomeUnknownOptions(inputs, usedNeurons));
-        res = res.sort(function (n1, n2) { return n1.value - n2.value; });
+        res = res.concat(this.getSomeUnknownOptions(inputs, inputsStr));
+        //res = res.sort((n1,n2) => n1.numberOfTimesUsed - n2.numberOfTimesUsed);
         return res;
     };
-    Brain.prototype.getSomeUnknownOptions = function (inputs, usedNeurons) {
+    Brain.prototype.getSomeUnknownOptions = function (inputs, inputsStr) {
         var maxOptions = 10;
         var res = new Array();
         for (var i = 0; i < maxOptions; i++) {
             var neuralOption = Func_1.Func.Sample(this.greyMatter);
-            if (usedNeurons[neuralOption.id] == true) {
+            if (this.usedInputVNeuralBranch[inputsStr][neuralOption.id]) {
                 continue;
             }
-            usedNeurons[neuralOption.id] = true;
-            var n = new NeuronRating_1.NeuronRating();
-            n.inputs = inputs;
+            var n = new NeuronMemory_1.NeuronMemory(inputs);
             n.neuralBranch = neuralOption;
-            n.value = 0;
+            n.numberOfTimesUsed = 0;
             res.push(n);
         }
         return res;
     };
     Brain.prototype.remember = function (neu) {
-        this.memory.push(neu);
+        if (neu.numberOfTimesUsed == 1) {
+            // First time used, so add to memory
+            this.memory.push(neu);
+        }
     };
     Brain.prototype.AddOptions = function (grey) {
         this.greyMatter = this.greyMatter.concat(grey);
     };
+    Brain.prototype.addMemories = function (mem) {
+        this.memory = this.memory.concat(mem);
+    };
     Brain.prototype.getOptions = function () {
         return this.greyMatter;
+    };
+    Brain.prototype.getMemories = function () {
+        return this.memory;
     };
     return Brain;
 }());
 exports.Brain = Brain;
-},{"../World/Func":16,"./NeuronRating":12}],9:[function(require,module,exports){
+},{"../World/Func":16,"./NeuralBranch":10,"./NeuronMemory":12}],9:[function(require,module,exports){
 "use strict";
 var Func_1 = require("../World/Func");
 var NeuralActions = (function () {
@@ -483,7 +485,7 @@ var NeuralActions_1 = require("./NeuralActions");
 var NeuralReader = (function () {
     function NeuralReader() {
     }
-    NeuralReader.CarryOutAction = function (cre, chosenOption, inputs) {
+    NeuralReader.CarryOutAction = function (cre, chosenOption, inputs, brain) {
         var res = "";
         chosenOption.neuralBranch.actions.forEach(function (action) {
             switch (action.action) {
@@ -515,30 +517,36 @@ var NeuralReader = (function () {
                     break;
             }
         });
+        chosenOption.numberOfTimesUsed++;
+        brain.remember(chosenOption);
     };
     return NeuralReader;
 }());
 exports.NeuralReader = NeuralReader;
 },{"./NeuralActions":9}],12:[function(require,module,exports){
 "use strict";
-var NeuronRating = (function () {
-    function NeuronRating() {
+var NeuronMemory = (function () {
+    function NeuronMemory(inputs) {
+        var _this = this;
+        this.inputs = [];
+        inputs.forEach(function (input) {
+            _this.inputs[input] = true;
+        });
     }
-    NeuronRating.prototype.hasInputs = function (inputsQuery) {
+    NeuronMemory.prototype.hasInputs = function (inputsQuery) {
+        var _this = this;
         var r = true;
-        this.inputs.forEach(function (input) {
-            inputsQuery.forEach(function (query) {
-                if (input != query) {
-                    r = false;
-                    return;
-                }
-            });
+        inputsQuery.forEach(function (query) {
+            if (_this.inputs[query] == null) {
+                r = false;
+                return;
+            }
         });
         return r;
     };
-    return NeuronRating;
+    return NeuronMemory;
 }());
-exports.NeuronRating = NeuronRating;
+exports.NeuronMemory = NeuronMemory;
 },{}],13:[function(require,module,exports){
 "use strict";
 var WorldController_1 = require("../World/WorldController");
@@ -688,8 +696,7 @@ var WorldController = (function () {
         this.displayList = [];
         this.foodList = [];
         this.creatureList = [];
-        this.spawnTimer = 5100;
-        this.spawnTimerMax = 5100;
+        this.spawnTimerMax = this.spawnTimer = 1000;
         this.addInformation();
         this.bestStats = new CreatureStats_1.CreatureStats();
         this.clickHandlers();
@@ -739,14 +746,14 @@ var WorldController = (function () {
         }
     };
     WorldController.prototype.spawn = function () {
-        for (var i = 0; i < 10; i++) {
-            this.addCreature();
+        for (var i = 0; i < 5; i++) {
             this.addFood();
+            this.addCreature();
         }
     };
     WorldController.prototype.reproduce = function (brain, parent) {
         var child = this.addCreature();
-        child.addBrain(brain);
+        child.addParentMemories(brain);
         child.resize(0.3);
         child.x = parent.x + 20;
         this.trackCreature(parent);

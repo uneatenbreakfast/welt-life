@@ -27,8 +27,7 @@ export class WorldController{
         this.foodList = [];
         this.creatureList = [];
 
-        this.spawnTimer = 5100;
-        this.spawnTimerMax = 5100;
+        this.spawnTimerMax = this.spawnTimer = 1000;
 
         this.addInformation();
         this.bestStats = new CreatureStats();
@@ -92,15 +91,15 @@ export class WorldController{
     }
 
     public spawn():void{
-        for(var i=0; i<10; i++){
-            this.addCreature();
+        for(var i=0; i<5; i++){
             this.addFood();
+            this.addCreature();
         }
     }
 
     public reproduce(brain:Brain, parent:Creature):void{
         var child = this.addCreature();
-        child.addBrain(brain);
+        child.addParentMemories(brain);
         child.resize(0.3);
         child.x = parent.x + 20;
 

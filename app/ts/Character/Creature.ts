@@ -18,9 +18,7 @@ export class Creature extends LoadedDisplaySprite implements IWorldObject {
 
   private walkSpeed:number;
   private runSpeed:number;
-
   private brain:Brain;
-  private greyMatter:NeuralBranch[];
 
   private _world:WorldController;
 
@@ -31,16 +29,6 @@ export class Creature extends LoadedDisplaySprite implements IWorldObject {
     this._world = WorldController.getInstance();
     this.brain = new Brain();
     this.memoryBank = new Array<TargetMemoryObject>();
-    this.greyMatter = new Array<NeuralBranch>();
-
-    var availableActions = ["left","right","up","down","stand"];
-    for(var i=0; i < 20; i++){
-      var n = new NeuralBranch();
-      n.generate(availableActions);
-      this.greyMatter.push(n);
-    }
-
-    this.brain.AddOptions(this.greyMatter);
 
     // Stats
     this.hp = 1000;
@@ -71,8 +59,8 @@ export class Creature extends LoadedDisplaySprite implements IWorldObject {
     this._world.reproduce(this.brain, this);
   }
 
-  public addBrain(brainToAdd:Brain):void{
-    this.brain.AddOptions(brainToAdd.getOptions())
+  public addParentMemories(brainToAdd:Brain):void{
+    this.brain.addMemories(brainToAdd.getMemories())
   }
 
   public move(action:string):void{
@@ -118,27 +106,14 @@ export class Creature extends LoadedDisplaySprite implements IWorldObject {
     var distanceToTarget:number = targetFromMemory.newDistance;
     var angleToTarget:number = targetFromMemory.angle;
 
-    var inputs = [angleToTarget, targetFromMemory.worldObject.type];
+    var inputs = [angleToTarget, WorldTypes[targetFromMemory.worldObject.type]];
 
     var optionsForTheseInputs = this.brain.getBranchesBasedOnInput(inputs);
     // Pick option
-    var chosenOption = Func.Sample(optionsForTheseInputs); // need to favour higher values
+    var chosenOption = Func.Sample(optionsForTheseInputs);
 
-    NeuralReader.CarryOutAction(this, chosenOption, inputs);
+    NeuralReader.CarryOutAction(this, chosenOption, inputs, this.brain);
 
-    chosenOption.value++;
-    this.brain.remember(chosenOption);
-
-    //
-
-
-    // pick GA Tree based on value and randomness - based on given inputs 
-    // 
-    // check if it's any closer to target (need to come up with memory for running away from targets)
-    // reassign fit value
-
-    
-    //--------
     targetFromMemory.expireOldCalculations();
   }
 
