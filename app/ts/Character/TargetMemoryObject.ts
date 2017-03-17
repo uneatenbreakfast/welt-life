@@ -1,7 +1,7 @@
-import { IWorldObject } from './Display/IWorldObject';
+import { IWorldObject, WorldTypes } from './Display/IWorldObject';
 export class TargetMemoryObject{
     public id:number;
-    public worldObject:IWorldObject;
+    public targetObject:IWorldObject;
 
     public oldDisX:number;
     public oldDisY:number;
@@ -16,7 +16,7 @@ export class TargetMemoryObject{
 
     constructor(worldObj:IWorldObject){
         this.id = worldObj.id;
-        this.worldObject = worldObj;
+        this.targetObject = worldObj;
     }
 
     expireOldCalculations():void{
@@ -25,42 +25,42 @@ export class TargetMemoryObject{
          this.oldDistance = this.newDistance;
     }
 
-    recalculate(brainobject:IWorldObject):void{
-        this.newDisX = Math.abs(this.worldObject.x - brainobject.x);
-        this.newDisY = Math.abs(this.worldObject.y - brainobject.y);
+    recalculate(creature:IWorldObject):void{
+        this.newDisX = Math.abs(this.targetObject.x - creature.x);
+        this.newDisY = Math.abs(this.targetObject.y - creature.y);
         this.newDistance = Math.sqrt(this.newDisX*this.newDisX + this.newDisY*this.newDisY);
     
 
         //calculate angle
-        if(brainobject.x > this.worldObject.x && brainobject.y > this.worldObject.y){
+        if(creature.x < this.targetObject.x && creature.y < this.targetObject.y){
             // Left Top quadrant
-            this.angle = 360 - this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
+            this.angle = 270 + this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
         }
 
-        if(brainobject.x < this.worldObject.x && brainobject.y > this.worldObject.y){
+        if(creature.x > this.targetObject.x && creature.y < this.targetObject.y){
             // Right Top quadrant
-            this.angle = this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
+            this.angle = 90 -this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
         }
 
-        if(brainobject.x > this.worldObject.x && brainobject.y < this.worldObject.y){
+        if(creature.x < this.targetObject.x && creature.y > this.targetObject.y){
             // Left Down quadrant
             this.angle = 270 - this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
         }
 
-        if(brainobject.x < this.worldObject.x && brainobject.y < this.worldObject.y){
+        if(creature.x > this.targetObject.x && creature.y > this.targetObject.y){
             // Right Down quadrant
-            this.angle = 90 +this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
+            this.angle = 90 + this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
         }
 
         if(this.newDisX == 0){
-            if(brainobject.y > this.worldObject.y){
+            if(creature.y > this.targetObject.y){
                 // Char below memory object
                 this.angle = 0;
             }else {
                 this.angle = 180;
             }
         }  if(this.newDisY == 0){
-            if(brainobject.x > this.worldObject.x){
+            if(creature.x > this.targetObject.x){
                 // Char right of memory object
                 this.angle = 270;
             }else {
@@ -69,7 +69,11 @@ export class TargetMemoryObject{
         }
 
         var baseSliceAngle = 36;
+
+
         this.angle = Math.floor(this.angle  / baseSliceAngle) * baseSliceAngle;
+
+        //console.log(this.angle, creature.y, this.targetObject.y, WorldTypes[this.targetObject.type], creature.id);
         
     }
 

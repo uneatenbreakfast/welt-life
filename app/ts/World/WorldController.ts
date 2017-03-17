@@ -1,3 +1,5 @@
+import { PositionPoint } from '../Models/PositionPoint';
+import { IWorldObject } from '../Character/Display/IWorldObject';
 import { CreatureStats } from '../Character/CreatureStats';
 import { TextFormat } from './TextFormat';
 import { Brain } from '../NeuralComponents/Brain';
@@ -11,11 +13,13 @@ export class WorldController{
     static _singleton:WorldController;
     private stage:PIXI.Sprite;
     private displayList:LoadedDisplaySprite[];
+    private quadGridDisplayList:Array<Array<Array<IWorldObject>>>;
     private foodList:Poffin[];
     private creatureList:Creature[];
 
-    private spawnTimerMax:number;
-    private spawnTimer:number;
+    private spawnAmount:number = 10;
+    private spawnTimerMax:number = 1000;
+    private spawnTimer:number = 1000;
     private worldBillBoard:PIXI.Text;
     private bestCreature:Creature;
     private bestStats:CreatureStats;
@@ -23,11 +27,10 @@ export class WorldController{
     constructor(){
         this.stage = new PIXI.Sprite();
 
+        this.quadGridDisplayList = new Array<Array<Array<IWorldObject>>>();
         this.displayList = [];
         this.foodList = [];
         this.creatureList = [];
-
-        this.spawnTimerMax = this.spawnTimer = 1000;
 
         this.addInformation();
         this.bestStats = new CreatureStats();
@@ -49,14 +52,22 @@ export class WorldController{
         document.body.addEventListener('click', function(event:any){
             if(event.path[0].tagName == "CANVAS"){
                 // Only clicks that hit the canvas directly will be let through
+                var usedClick = false;
                 vm.displayList.forEach(element => {
                     if((element as any).GetSprite().getBounds().contains(event.x, event.y)){
-
-                        console.log(element);
-
+                        usedClick = true;
                         return;
                     }    
                 });
+
+                if(!usedClick){
+                    var food = vm.addFood();
+                    food.x = Settings.stageWidth / 2;
+                    food.y = Settings.stageHeight / 2;
+                }
+
+
+
                 //
             }
         });
@@ -91,16 +102,25 @@ export class WorldController{
     }
 
     public spawn():void{
-        for(var i=0; i<5; i++){
-            this.addFood();
+        for(var i=0; i< this.spawnAmount; i++){
+            //this.addFood();
+            
+
             this.addCreature();
+
         }
+
+         var food = this.addFood();
+        food.x = Settings.stageWidth / 2;
+        food.y = Settings.stageHeight / 2;
+        food.init();
     }
 
     public reproduce(brain:Brain, parent:Creature):void{
         var child = this.addCreature();
         child.addParentMemories(brain);
         child.resize(0.3);
+        child.generation = parent.generation + 1;
         child.x = parent.x + 20;
 
         this.trackCreature(parent);
@@ -115,18 +135,22 @@ export class WorldController{
         var pika = new Creature("PikaCreature");
         pika.x = Settings.stageWidth * Math.random();
         pika.y = Settings.stageHeight * Math.random();
+        pika.init();
         this.AddGameChild(pika);
         this.creatureList.push(pika);
 
         return pika;
     }
 
-    private addFood():void{
+    private addFood():Poffin{
         var food = new Poffin();
         food.x = Settings.stageWidth * Math.random();
         food.y = Settings.stageHeight * Math.random();
+        food.init();
         this.AddGameChild(food);
         this.foodList.push(food);
+
+        return food;
     }
 
     public tickTock():void{
@@ -148,8 +172,12 @@ export class WorldController{
             this.creatureList.forEach(cre=>{
                 if(Math.abs(cre.x - food.x) < 20){
                     if(Math.abs(cre.y - food.y) < 20){
+
+                        if(food.markAsDeleted){
+                            return;
+                        }
                         cre.reproduce();
-                        food.eaten();
+                        food.removeWorldObject();
                     }
                 }
             });
@@ -179,7 +207,71 @@ export class WorldController{
         this.updateWorldBillBoard();
     }
 
-    public getWorldObjects():any[]{
-        return this.displayList;
+    public getNearbyWorldObjects(currentCreature:IWorldObject, currentPoint:PositionPoint):any[]{
+        var nearbyObjects:Array<IWorldObject> = new Array<IWorldObject>();
+
+        for(var o:number=-1;o<2; o++){
+            for(var i:number=-1;i<2; i++){
+                if(this.quadGridDisplayList[this.minXGrid(currentPoint.x+i)])
+                {
+                    if(this.quadGridDisplayList[this.minXGrid(currentPoint.x+i)][this.minYGrid(currentPoint.y+o)]){
+                        nearbyObjects = nearbyObjects.concat( this.quadGridDisplayList[this.minXGrid(currentPoint.x+i)][this.minYGrid(currentPoint.y+o)] );
+                    }
+                }
+            }
+        }
+        
+        return nearbyObjects;
+    }
+
+    private minXGrid(n:number):number{
+        if(n < 0){
+            n = 0;
+        }else if(n > Math.floor(Settings.stageWidth/Settings.gridSize)){
+            n = Math.floor(Settings.stageWidth/Settings.gridSize);
+        }
+        return n;
+    }
+
+    private minYGrid(n:number):number{
+        if(n < 0){
+            n = 0;
+        }else if(n > Math.floor(Settings.stageHeight/Settings.gridSize)){
+            n = Math.floor(Settings.stageHeight/Settings.gridSize);
+        }
+        return n;
+    }
+
+    public removeWorldObject(currentObject:IWorldObject, lastPoint:PositionPoint):void{
+        if(lastPoint.x > -1){
+            // remove the currentObject if it's still at the same place
+            if(this.quadGridDisplayList[lastPoint.x][lastPoint.y][lastPoint.z]){
+                if(this.quadGridDisplayList[lastPoint.x][lastPoint.y][lastPoint.z].id == currentObject.id){
+                    this.quadGridDisplayList[lastPoint.x][lastPoint.y].splice(lastPoint.z, 1);
+                    return;
+                }
+            }
+
+            // Otherwise, look for it then delete it
+            var newIndex = Func.GetIdIndex(this.quadGridDisplayList[lastPoint.x][lastPoint.y], currentObject.id);
+            this.quadGridDisplayList[lastPoint.x][lastPoint.y].splice(newIndex, 1);
+        }
+    }
+
+    public updateObjectPosition(currentObject:IWorldObject, currentPoint:PositionPoint, lastPoint:PositionPoint):number{
+        // Ignore creature's first position
+        this.removeWorldObject(currentObject, lastPoint);
+        
+        // Create Arrays if empty
+        if(this.quadGridDisplayList[currentPoint.x] == null){
+            this.quadGridDisplayList[currentPoint.x] = [];
+        }
+        if(this.quadGridDisplayList[currentPoint.x][currentPoint.y] == null){
+            this.quadGridDisplayList[currentPoint.x][currentPoint.y] = [];
+        }
+
+        // Push creature to list
+        this.quadGridDisplayList[currentPoint.x][currentPoint.y].push(currentObject);
+        return this.quadGridDisplayList[currentPoint.x][currentPoint.y].length - 1;
     }
 }

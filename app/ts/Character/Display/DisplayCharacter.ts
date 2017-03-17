@@ -7,7 +7,8 @@ export class LoadedDisplaySprite{
   private _z:number;
 
   private _wrender:Renderer;
-  private _sprite:dragonBones.PixiArmatureDisplay;
+  private _sprite:PIXI.Sprite;
+  private _characterSprite:dragonBones.PixiArmatureDisplay;
 
   private spriteStorage:SpriteStorage;
   private dragonFactory:dragonBones.PixiFactory;
@@ -31,19 +32,22 @@ export class LoadedDisplaySprite{
 
   private addCharacter(armature:string):void{
     var armatureDisplay:dragonBones.PixiArmatureDisplay = this.dragonFactory.buildArmatureDisplay(armature);
-    this._sprite = armatureDisplay;
+    this._characterSprite = armatureDisplay;
+    
+    this._sprite = new PIXI.Sprite();
+    this._sprite.addChild(this._characterSprite);
 
     this.scaleX(1);
     this.Animate("stand");
   }
 
-  public GetSprite (): dragonBones.PixiArmatureDisplay{
+  public GetSprite ():PIXI.Sprite{
       return this._sprite;
   }
 
   public scaleX(num:number):void{
-    this._sprite.scale.x = this.scaleSize * num;
-    this._sprite.scale.y = this.scaleSize;
+    this._characterSprite.scale.x = this.scaleSize * num;
+    this._characterSprite.scale.y = this.scaleSize;
   }
 
   public resize(num:number):void{
@@ -54,7 +58,7 @@ export class LoadedDisplaySprite{
  public Animate(animationName:string):void{
     if(this.currentAnimation != animationName){
       this.currentAnimation = animationName;
-      this._sprite.animation.play(animationName);
+      this._characterSprite.animation.play(animationName);
     }
   }
   //
@@ -63,13 +67,7 @@ export class LoadedDisplaySprite{
   }
   set x(xx:number) {
      this._x = xx;
-
-     try {
-       this._sprite.x = this._x;
-    } catch(e) {
-      console.log(e.stack);
-    }
-
+    this._sprite.x = this._x;
   }
   //
   get y():number {

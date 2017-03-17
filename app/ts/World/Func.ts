@@ -1,3 +1,4 @@
+import { IWorldObject } from '../Character/Display/IWorldObject';
 export class Func{
     public static Sample<T> (array:Array<T>):T {
         return array[Math.floor(Math.random()*array.length)];
@@ -8,5 +9,16 @@ export class Func{
         if (index > -1) {
             array.splice(index, 1);
         }
+    }
+
+    public static GetIdIndex(array:Array<IWorldObject>, item:number):number{
+        var res = -1;
+        array.forEach((x, i) => {
+            if(x.id == item){
+                res = i;
+                return;
+            }
+        })
+        return res;
     }
 }

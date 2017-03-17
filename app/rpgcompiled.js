@@ -60,45 +60,67 @@ var AssetLoader = (function () {
     return AssetLoader;
 }());
 exports.AssetLoader = AssetLoader;
-},{"./Render/Renderer":13,"./Render/SpriteStorage":14}],2:[function(require,module,exports){
+},{"./Render/Renderer":16,"./Render/SpriteStorage":17}],2:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+var PositionPoint_1 = require("../Models/PositionPoint");
+var TextFormat_1 = require("../World/TextFormat");
 var Func_1 = require("../World/Func");
 var Brain_1 = require("../NeuralComponents/Brain");
 var NeuralReader_1 = require("../NeuralComponents/NeuralReader");
 var TargetMemoryObject_1 = require("./TargetMemoryObject");
 var IWorldObject_1 = require("./Display/IWorldObject");
-var WorldController_1 = require("../World/WorldController");
 var Settings_1 = require("../Settings");
-var DisplayCharacter_1 = require("./Display/DisplayCharacter");
+var Constants_1 = require("../Models/Constants");
+var WorldObject_1 = require("./Display/WorldObject");
 var Creature = (function (_super) {
     __extends(Creature, _super);
     function Creature(armature) {
         var _this = _super.call(this, armature) || this;
         // Creature knows about:
-        _this._world = WorldController_1.WorldController.getInstance();
         _this.brain = new Brain_1.Brain();
         _this.memoryBank = new Array();
         // Stats
         _this.hp = 1000;
+        _this.generation = 1;
         _this.walkSpeed = 2;
         _this.runSpeed = 5;
         _this.type = IWorldObject_1.WorldTypes.CREATURE;
         _this.id = Math.floor(Math.random() * 99999999999999);
+        //
+        _this.lastPositionPoint = new PositionPoint_1.PositionPoint(-1, -1, -1);
+        _this.loadStats();
         return _this;
     }
+    Creature.prototype.init = function () {
+        // Only run after external variables on this are set
+        this.move(Constants_1.OutputAction.STAND);
+    };
+    Creature.prototype.loadStats = function () {
+        var txtStyle = new TextFormat_1.TextFormat();
+        this.statTxt = new PIXI.Text("", txtStyle);
+        ;
+        this.statTxt.y = 0;
+        this.GetSprite().addChild(this.statTxt);
+    };
+    Creature.prototype.updateStats = function () {
+        var text = 'Gen:' + this.generation + '\n';
+        text += 'HP:' + this.hp + '\n';
+        this.statTxt.text = text;
+    };
     Creature.prototype.tick = function () {
         this.think();
         this.age();
+        this.updateStats();
     };
     Creature.prototype.age = function () {
         this.hp--;
         if (this.hp < 0) {
-            this.markAsDeleted = true;
+            this.removeWorldObject();
         }
     };
     Creature.prototype.getHp = function () {
@@ -106,28 +128,28 @@ var Creature = (function (_super) {
     };
     Creature.prototype.reproduce = function () {
         this.hp += 1000;
-        this._world.reproduce(this.brain, this);
+        this.world.reproduce(this.brain, this);
     };
     Creature.prototype.addParentMemories = function (brainToAdd) {
         this.brain.addMemories(brainToAdd.getMemories());
     };
     Creature.prototype.move = function (action) {
         switch (action) {
-            case "left":
+            case Constants_1.OutputAction.LEFT:
                 this.x -= this.runSpeed;
                 this.scaleX(1);
                 break;
-            case "right":
+            case Constants_1.OutputAction.RIGHT:
                 this.x += this.runSpeed;
                 this.scaleX(-1);
                 break;
-            case "up":
+            case Constants_1.OutputAction.UP:
                 this.y -= this.runSpeed;
                 break;
-            case "down":
+            case Constants_1.OutputAction.DOWN:
                 this.y += this.runSpeed;
                 break;
-            case "stand":
+            case Constants_1.OutputAction.STAND:
                 break;
             default:
                 console.log("Invalid Action:", action);
@@ -144,14 +166,22 @@ var Creature = (function (_super) {
         else if (this.y > Settings_1.Settings.stageHeight) {
             this.y = 0;
         }
+        var currentPosition = new PositionPoint_1.PositionPoint(Math.floor(this.x / Settings_1.Settings.gridSize), Math.floor(this.y / Settings_1.Settings.gridSize), -1);
+        if (currentPosition.x != this.lastPositionPoint.x && currentPosition.y != this.lastPositionPoint.y) {
+            currentPosition.z = this.world.updateObjectPosition(this, currentPosition, this.lastPositionPoint);
+            this.lastPositionPoint = currentPosition;
+        }
     };
     Creature.prototype.think = function () {
         var targetFromMemory = this.findTarget();
+        if (targetFromMemory == null) {
+            return;
+        }
         targetFromMemory.recalculate(this);
         //--------
         var distanceToTarget = targetFromMemory.newDistance;
         var angleToTarget = targetFromMemory.angle;
-        var inputs = [angleToTarget, IWorldObject_1.WorldTypes[targetFromMemory.worldObject.type]];
+        var inputs = [angleToTarget, IWorldObject_1.WorldTypes[targetFromMemory.targetObject.type]];
         var optionsForTheseInputs = this.brain.getBranchesBasedOnInput(inputs);
         // Pick option
         var chosenOption = Func_1.Func.Sample(optionsForTheseInputs);
@@ -159,27 +189,35 @@ var Creature = (function (_super) {
         targetFromMemory.expireOldCalculations();
     };
     Creature.prototype.findTarget = function () {
-        var firstWorldObject;
-        var objs = this._world.getWorldObjects();
-        objs.forEach(function (element) {
-            firstWorldObject = element;
-        });
+        var _this = this;
+        var objs = this.world.getNearbyWorldObjects(this, this.lastPositionPoint);
+        var randomSelectedObject = Func_1.Func.Sample(objs);
+        if (randomSelectedObject.id == this.id) {
+            // Tries to always get something other than itself.. only last option is itself
+            objs.forEach(function (x) {
+                if (x.id != _this.id) {
+                    randomSelectedObject = x;
+                    return;
+                }
+            });
+        }
         // retrieve item from memoryBank
         var memory;
-        this.memoryBank.forEach(function (element) {
-            element.id = firstWorldObject.id;
-            memory = element;
-            return;
+        this.memoryBank.forEach(function (mem) {
+            if (mem.targetObject.id == randomSelectedObject.id) {
+                memory = mem;
+                return;
+            }
         });
         if (memory == null) {
-            memory = new TargetMemoryObject_1.TargetMemoryObject(firstWorldObject);
+            memory = new TargetMemoryObject_1.TargetMemoryObject(randomSelectedObject);
         }
         return memory;
     };
     return Creature;
-}(DisplayCharacter_1.LoadedDisplaySprite));
+}(WorldObject_1.WorldObject));
 exports.Creature = Creature;
-},{"../NeuralComponents/Brain":8,"../NeuralComponents/NeuralReader":11,"../Settings":15,"../World/Func":16,"../World/WorldController":18,"./Display/DisplayCharacter":4,"./Display/IWorldObject":5,"./TargetMemoryObject":7}],3:[function(require,module,exports){
+},{"../Models/Constants":9,"../Models/PositionPoint":10,"../NeuralComponents/Brain":11,"../NeuralComponents/NeuralReader":14,"../Settings":18,"../World/Func":19,"../World/TextFormat":20,"./Display/IWorldObject":5,"./Display/WorldObject":6,"./TargetMemoryObject":8}],3:[function(require,module,exports){
 "use strict";
 var CreatureStats = (function () {
     function CreatureStats() {
@@ -204,7 +242,9 @@ var LoadedDisplaySprite = (function () {
     }
     LoadedDisplaySprite.prototype.addCharacter = function (armature) {
         var armatureDisplay = this.dragonFactory.buildArmatureDisplay(armature);
-        this._sprite = armatureDisplay;
+        this._characterSprite = armatureDisplay;
+        this._sprite = new PIXI.Sprite();
+        this._sprite.addChild(this._characterSprite);
         this.scaleX(1);
         this.Animate("stand");
     };
@@ -212,8 +252,8 @@ var LoadedDisplaySprite = (function () {
         return this._sprite;
     };
     LoadedDisplaySprite.prototype.scaleX = function (num) {
-        this._sprite.scale.x = this.scaleSize * num;
-        this._sprite.scale.y = this.scaleSize;
+        this._characterSprite.scale.x = this.scaleSize * num;
+        this._characterSprite.scale.y = this.scaleSize;
     };
     LoadedDisplaySprite.prototype.resize = function (num) {
         this.scaleSize = num;
@@ -222,7 +262,7 @@ var LoadedDisplaySprite = (function () {
     LoadedDisplaySprite.prototype.Animate = function (animationName) {
         if (this.currentAnimation != animationName) {
             this.currentAnimation = animationName;
-            this._sprite.animation.play(animationName);
+            this._characterSprite.animation.play(animationName);
         }
     };
     Object.defineProperty(LoadedDisplaySprite.prototype, "x", {
@@ -232,12 +272,7 @@ var LoadedDisplaySprite = (function () {
         },
         set: function (xx) {
             this._x = xx;
-            try {
-                this._sprite.x = this._x;
-            }
-            catch (e) {
-                console.log(e.stack);
-            }
+            this._sprite.x = this._x;
         },
         enumerable: true,
         configurable: true
@@ -271,7 +306,7 @@ var LoadedDisplaySprite = (function () {
     return LoadedDisplaySprite;
 }());
 exports.LoadedDisplaySprite = LoadedDisplaySprite;
-},{"../../Render/SpriteStorage":14}],5:[function(require,module,exports){
+},{"../../Render/SpriteStorage":17}],5:[function(require,module,exports){
 "use strict";
 var WorldTypes;
 (function (WorldTypes) {
@@ -285,58 +320,84 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+var WorldController_1 = require("../../World/WorldController");
+var DisplayCharacter_1 = require("./DisplayCharacter");
+var WorldObject = (function (_super) {
+    __extends(WorldObject, _super);
+    function WorldObject(armature) {
+        var _this = _super.call(this, armature) || this;
+        _this.world = WorldController_1.WorldController.getInstance();
+        _this.markAsDeleted = false;
+        return _this;
+    }
+    WorldObject.prototype.removeWorldObject = function () {
+        this.markAsDeleted = true;
+        this.world.removeWorldObject(this, this.lastPositionPoint);
+    };
+    return WorldObject;
+}(DisplayCharacter_1.LoadedDisplaySprite));
+exports.WorldObject = WorldObject;
+},{"../../World/WorldController":21,"./DisplayCharacter":4}],7:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var PositionPoint_1 = require("../Models/PositionPoint");
 var IWorldObject_1 = require("./Display/IWorldObject");
-var DisplayCharacter_1 = require("./Display/DisplayCharacter");
+var Settings_1 = require("../Settings");
+var WorldObject_1 = require("./Display/WorldObject");
 var Poffin = (function (_super) {
     __extends(Poffin, _super);
     function Poffin() {
         var _this = _super.call(this, "Poffin") || this;
-        _this.markAsDeleted = false;
         _this.type = IWorldObject_1.WorldTypes.FOOD;
         _this.id = Math.floor(Math.random() * 99999999999999);
         return _this;
     }
-    Poffin.prototype.eaten = function () {
-        this.markAsDeleted = true;
+    Poffin.prototype.init = function () {
+        this.lastPositionPoint = new PositionPoint_1.PositionPoint(Math.floor(this.x / Settings_1.Settings.gridSize), Math.floor(this.y / Settings_1.Settings.gridSize), -1);
+        this.lastPositionPoint.z = this.world.updateObjectPosition(this, this.lastPositionPoint, new PositionPoint_1.PositionPoint(-1, -1, -1));
     };
     return Poffin;
-}(DisplayCharacter_1.LoadedDisplaySprite));
+}(WorldObject_1.WorldObject));
 exports.Poffin = Poffin;
-},{"./Display/DisplayCharacter":4,"./Display/IWorldObject":5}],7:[function(require,module,exports){
+},{"../Models/PositionPoint":10,"../Settings":18,"./Display/IWorldObject":5,"./Display/WorldObject":6}],8:[function(require,module,exports){
 "use strict";
 var TargetMemoryObject = (function () {
     function TargetMemoryObject(worldObj) {
         this.id = worldObj.id;
-        this.worldObject = worldObj;
+        this.targetObject = worldObj;
     }
     TargetMemoryObject.prototype.expireOldCalculations = function () {
         this.oldDisX = this.newDisX;
         this.oldDisY = this.newDisY;
         this.oldDistance = this.newDistance;
     };
-    TargetMemoryObject.prototype.recalculate = function (brainobject) {
-        this.newDisX = Math.abs(this.worldObject.x - brainobject.x);
-        this.newDisY = Math.abs(this.worldObject.y - brainobject.y);
+    TargetMemoryObject.prototype.recalculate = function (creature) {
+        this.newDisX = Math.abs(this.targetObject.x - creature.x);
+        this.newDisY = Math.abs(this.targetObject.y - creature.y);
         this.newDistance = Math.sqrt(this.newDisX * this.newDisX + this.newDisY * this.newDisY);
         //calculate angle
-        if (brainobject.x > this.worldObject.x && brainobject.y > this.worldObject.y) {
+        if (creature.x < this.targetObject.x && creature.y < this.targetObject.y) {
             // Left Top quadrant
-            this.angle = 360 - this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
+            this.angle = 270 + this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
         }
-        if (brainobject.x < this.worldObject.x && brainobject.y > this.worldObject.y) {
+        if (creature.x > this.targetObject.x && creature.y < this.targetObject.y) {
             // Right Top quadrant
-            this.angle = this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
+            this.angle = 90 - this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
         }
-        if (brainobject.x > this.worldObject.x && brainobject.y < this.worldObject.y) {
+        if (creature.x < this.targetObject.x && creature.y > this.targetObject.y) {
             // Left Down quadrant
             this.angle = 270 - this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
         }
-        if (brainobject.x < this.worldObject.x && brainobject.y < this.worldObject.y) {
+        if (creature.x > this.targetObject.x && creature.y > this.targetObject.y) {
             // Right Down quadrant
             this.angle = 90 + this.radiansToDegrees(Math.atan(this.newDisY / this.newDisX));
         }
         if (this.newDisX == 0) {
-            if (brainobject.y > this.worldObject.y) {
+            if (creature.y > this.targetObject.y) {
                 // Char below memory object
                 this.angle = 0;
             }
@@ -345,7 +406,7 @@ var TargetMemoryObject = (function () {
             }
         }
         if (this.newDisY == 0) {
-            if (brainobject.x > this.worldObject.x) {
+            if (creature.x > this.targetObject.x) {
                 // Char right of memory object
                 this.angle = 270;
             }
@@ -355,6 +416,7 @@ var TargetMemoryObject = (function () {
         }
         var baseSliceAngle = 36;
         this.angle = Math.floor(this.angle / baseSliceAngle) * baseSliceAngle;
+        //console.log(this.angle, creature.y, this.targetObject.y, WorldTypes[this.targetObject.type], creature.id);
     };
     TargetMemoryObject.prototype.radiansToDegrees = function (radians) {
         return radians * 180 / Math.PI;
@@ -362,17 +424,39 @@ var TargetMemoryObject = (function () {
     return TargetMemoryObject;
 }());
 exports.TargetMemoryObject = TargetMemoryObject;
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
+"use strict";
+var OutputAction;
+(function (OutputAction) {
+    OutputAction[OutputAction["LEFT"] = 0] = "LEFT";
+    OutputAction[OutputAction["RIGHT"] = 1] = "RIGHT";
+    OutputAction[OutputAction["UP"] = 2] = "UP";
+    OutputAction[OutputAction["DOWN"] = 3] = "DOWN";
+    OutputAction[OutputAction["STAND"] = 4] = "STAND";
+})(OutputAction = exports.OutputAction || (exports.OutputAction = {}));
+},{}],10:[function(require,module,exports){
+"use strict";
+var PositionPoint = (function () {
+    function PositionPoint(_x, _y, _z) {
+        this.x = _x;
+        this.y = _y;
+        this.z = _z;
+    }
+    return PositionPoint;
+}());
+exports.PositionPoint = PositionPoint;
+},{}],11:[function(require,module,exports){
 "use strict";
 var Func_1 = require("../World/Func");
 var NeuralBranch_1 = require("./NeuralBranch");
 var NeuronMemory_1 = require("./NeuronMemory");
+var Constants_1 = require("../Models/Constants");
 var Brain = (function () {
     function Brain() {
         this.memory = new Array();
         this.greyMatter = new Array();
         this.usedInputVNeuralBranch = new Array();
-        var availableActions = ["left", "right", "up", "down", "stand"];
+        var availableActions = [Constants_1.OutputAction.LEFT, Constants_1.OutputAction.RIGHT, Constants_1.OutputAction.UP, Constants_1.OutputAction.DOWN, Constants_1.OutputAction.STAND];
         for (var i = 0; i < 20; i++) {
             var n = new NeuralBranch_1.NeuralBranch();
             n.generate(availableActions);
@@ -384,6 +468,7 @@ var Brain = (function () {
         var res = new Array();
         var inputsStr = inputs.join("-");
         if (this.usedInputVNeuralBranch[inputsStr] == null) {
+            //console.log("inputs:", inputsStr);
             this.usedInputVNeuralBranch[inputsStr] = [];
         }
         this.memory.forEach(function (neuron) {
@@ -432,7 +517,7 @@ var Brain = (function () {
     return Brain;
 }());
 exports.Brain = Brain;
-},{"../World/Func":16,"./NeuralBranch":10,"./NeuronMemory":12}],9:[function(require,module,exports){
+},{"../Models/Constants":9,"../World/Func":19,"./NeuralBranch":13,"./NeuronMemory":15}],12:[function(require,module,exports){
 "use strict";
 var Func_1 = require("../World/Func");
 var NeuralActions = (function () {
@@ -460,7 +545,7 @@ var ActionTypes;
     ActionTypes[ActionTypes["AND"] = 6] = "AND";
     ActionTypes[ActionTypes["OR"] = 7] = "OR";
 })(ActionTypes = exports.ActionTypes || (exports.ActionTypes = {}));
-},{"../World/Func":16}],10:[function(require,module,exports){
+},{"../World/Func":19}],13:[function(require,module,exports){
 "use strict";
 var Func_1 = require("../World/Func");
 var NeuralActions_1 = require("./NeuralActions");
@@ -479,7 +564,7 @@ var NeuralBranch = (function () {
     return NeuralBranch;
 }());
 exports.NeuralBranch = NeuralBranch;
-},{"../World/Func":16,"./NeuralActions":9}],11:[function(require,module,exports){
+},{"../World/Func":19,"./NeuralActions":12}],14:[function(require,module,exports){
 "use strict";
 var NeuralActions_1 = require("./NeuralActions");
 var NeuralReader = (function () {
@@ -523,7 +608,7 @@ var NeuralReader = (function () {
     return NeuralReader;
 }());
 exports.NeuralReader = NeuralReader;
-},{"./NeuralActions":9}],12:[function(require,module,exports){
+},{"./NeuralActions":12}],15:[function(require,module,exports){
 "use strict";
 var NeuronMemory = (function () {
     function NeuronMemory(inputs) {
@@ -547,7 +632,7 @@ var NeuronMemory = (function () {
     return NeuronMemory;
 }());
 exports.NeuronMemory = NeuronMemory;
-},{}],13:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 "use strict";
 var WorldController_1 = require("../World/WorldController");
 var Settings_1 = require("../Settings");
@@ -591,7 +676,7 @@ var Renderer = (function () {
     return Renderer;
 }());
 exports.Renderer = Renderer;
-},{"../Settings":15,"../World/WorldController":18}],14:[function(require,module,exports){
+},{"../Settings":18,"../World/WorldController":21}],17:[function(require,module,exports){
 "use strict";
 var SpriteStorage = (function () {
     function SpriteStorage() {
@@ -632,7 +717,7 @@ var SpriteStorage = (function () {
     return SpriteStorage;
 }());
 exports.SpriteStorage = SpriteStorage;
-},{}],15:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 "use strict";
 var Settings = (function () {
     function Settings() {
@@ -641,12 +726,13 @@ var Settings = (function () {
         Settings.stageWidth = window.innerWidth;
         Settings.stageHeight = window.innerHeight;
         Settings.aspectRatio = 16 / 9;
+        Settings.gridSize = 500;
         console.log("==== Initializing Settings");
     };
     return Settings;
 }());
 exports.Settings = Settings;
-},{}],16:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
 var Func = (function () {
     function Func() {
@@ -660,10 +746,20 @@ var Func = (function () {
             array.splice(index, 1);
         }
     };
+    Func.GetIdIndex = function (array, item) {
+        var res = -1;
+        array.forEach(function (x, i) {
+            if (x.id == item) {
+                res = i;
+                return;
+            }
+        });
+        return res;
+    };
     return Func;
 }());
 exports.Func = Func;
-},{}],17:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -682,7 +778,7 @@ var TextFormat = (function (_super) {
     return TextFormat;
 }(PIXI.TextStyle));
 exports.TextFormat = TextFormat;
-},{}],18:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 var CreatureStats_1 = require("../Character/CreatureStats");
 var TextFormat_1 = require("./TextFormat");
@@ -692,11 +788,14 @@ var Poffin_1 = require("../Character/Poffin");
 var Creature_1 = require("../Character/Creature");
 var WorldController = (function () {
     function WorldController() {
+        this.spawnAmount = 10;
+        this.spawnTimerMax = 1000;
+        this.spawnTimer = 1000;
         this.stage = new PIXI.Sprite();
+        this.quadGridDisplayList = new Array();
         this.displayList = [];
         this.foodList = [];
         this.creatureList = [];
-        this.spawnTimerMax = this.spawnTimer = 1000;
         this.addInformation();
         this.bestStats = new CreatureStats_1.CreatureStats();
         this.clickHandlers();
@@ -715,12 +814,18 @@ var WorldController = (function () {
         document.body.addEventListener('click', function (event) {
             if (event.path[0].tagName == "CANVAS") {
                 // Only clicks that hit the canvas directly will be let through
+                var usedClick = false;
                 vm.displayList.forEach(function (element) {
                     if (element.GetSprite().getBounds().contains(event.x, event.y)) {
-                        console.log(element);
+                        usedClick = true;
                         return;
                     }
                 });
+                if (!usedClick) {
+                    var food = vm.addFood();
+                    food.x = Settings_1.Settings.stageWidth / 2;
+                    food.y = Settings_1.Settings.stageHeight / 2;
+                }
             }
         });
     };
@@ -746,15 +851,20 @@ var WorldController = (function () {
         }
     };
     WorldController.prototype.spawn = function () {
-        for (var i = 0; i < 5; i++) {
-            this.addFood();
+        for (var i = 0; i < this.spawnAmount; i++) {
+            //this.addFood();
             this.addCreature();
         }
+        var food = this.addFood();
+        food.x = Settings_1.Settings.stageWidth / 2;
+        food.y = Settings_1.Settings.stageHeight / 2;
+        food.init();
     };
     WorldController.prototype.reproduce = function (brain, parent) {
         var child = this.addCreature();
         child.addParentMemories(brain);
         child.resize(0.3);
+        child.generation = parent.generation + 1;
         child.x = parent.x + 20;
         this.trackCreature(parent);
     };
@@ -766,6 +876,7 @@ var WorldController = (function () {
         var pika = new Creature_1.Creature("PikaCreature");
         pika.x = Settings_1.Settings.stageWidth * Math.random();
         pika.y = Settings_1.Settings.stageHeight * Math.random();
+        pika.init();
         this.AddGameChild(pika);
         this.creatureList.push(pika);
         return pika;
@@ -774,8 +885,10 @@ var WorldController = (function () {
         var food = new Poffin_1.Poffin();
         food.x = Settings_1.Settings.stageWidth * Math.random();
         food.y = Settings_1.Settings.stageHeight * Math.random();
+        food.init();
         this.AddGameChild(food);
         this.foodList.push(food);
+        return food;
     };
     WorldController.prototype.tickTock = function () {
         // Sort Z-Index
@@ -794,8 +907,11 @@ var WorldController = (function () {
             this_1.creatureList.forEach(function (cre) {
                 if (Math.abs(cre.x - food.x) < 20) {
                     if (Math.abs(cre.y - food.y) < 20) {
+                        if (food.markAsDeleted) {
+                            return;
+                        }
                         cre.reproduce();
-                        food.eaten();
+                        food.removeWorldObject();
                     }
                 }
             });
@@ -825,13 +941,69 @@ var WorldController = (function () {
         // worldBillBoard
         this.updateWorldBillBoard();
     };
-    WorldController.prototype.getWorldObjects = function () {
-        return this.displayList;
+    WorldController.prototype.getNearbyWorldObjects = function (currentCreature, currentPoint) {
+        var nearbyObjects = new Array();
+        for (var o = -1; o < 2; o++) {
+            for (var i = -1; i < 2; i++) {
+                if (this.quadGridDisplayList[this.minXGrid(currentPoint.x + i)]) {
+                    if (this.quadGridDisplayList[this.minXGrid(currentPoint.x + i)][this.minYGrid(currentPoint.y + o)]) {
+                        nearbyObjects = nearbyObjects.concat(this.quadGridDisplayList[this.minXGrid(currentPoint.x + i)][this.minYGrid(currentPoint.y + o)]);
+                    }
+                }
+            }
+        }
+        return nearbyObjects;
+    };
+    WorldController.prototype.minXGrid = function (n) {
+        if (n < 0) {
+            n = 0;
+        }
+        else if (n > Math.floor(Settings_1.Settings.stageWidth / Settings_1.Settings.gridSize)) {
+            n = Math.floor(Settings_1.Settings.stageWidth / Settings_1.Settings.gridSize);
+        }
+        return n;
+    };
+    WorldController.prototype.minYGrid = function (n) {
+        if (n < 0) {
+            n = 0;
+        }
+        else if (n > Math.floor(Settings_1.Settings.stageHeight / Settings_1.Settings.gridSize)) {
+            n = Math.floor(Settings_1.Settings.stageHeight / Settings_1.Settings.gridSize);
+        }
+        return n;
+    };
+    WorldController.prototype.removeWorldObject = function (currentObject, lastPoint) {
+        if (lastPoint.x > -1) {
+            // remove the currentObject if it's still at the same place
+            if (this.quadGridDisplayList[lastPoint.x][lastPoint.y][lastPoint.z]) {
+                if (this.quadGridDisplayList[lastPoint.x][lastPoint.y][lastPoint.z].id == currentObject.id) {
+                    this.quadGridDisplayList[lastPoint.x][lastPoint.y].splice(lastPoint.z, 1);
+                    return;
+                }
+            }
+            // Otherwise, look for it then delete it
+            var newIndex = Func_1.Func.GetIdIndex(this.quadGridDisplayList[lastPoint.x][lastPoint.y], currentObject.id);
+            this.quadGridDisplayList[lastPoint.x][lastPoint.y].splice(newIndex, 1);
+        }
+    };
+    WorldController.prototype.updateObjectPosition = function (currentObject, currentPoint, lastPoint) {
+        // Ignore creature's first position
+        this.removeWorldObject(currentObject, lastPoint);
+        // Create Arrays if empty
+        if (this.quadGridDisplayList[currentPoint.x] == null) {
+            this.quadGridDisplayList[currentPoint.x] = [];
+        }
+        if (this.quadGridDisplayList[currentPoint.x][currentPoint.y] == null) {
+            this.quadGridDisplayList[currentPoint.x][currentPoint.y] = [];
+        }
+        // Push creature to list
+        this.quadGridDisplayList[currentPoint.x][currentPoint.y].push(currentObject);
+        return this.quadGridDisplayList[currentPoint.x][currentPoint.y].length - 1;
     };
     return WorldController;
 }());
 exports.WorldController = WorldController;
-},{"../Character/Creature":2,"../Character/CreatureStats":3,"../Character/Poffin":6,"../Settings":15,"./Func":16,"./TextFormat":17}],19:[function(require,module,exports){
+},{"../Character/Creature":2,"../Character/CreatureStats":3,"../Character/Poffin":7,"../Settings":18,"./Func":19,"./TextFormat":20}],22:[function(require,module,exports){
 "use strict";
 var Settings_1 = require("./Settings");
 var WorldController_1 = require("./World/WorldController");
@@ -869,5 +1041,5 @@ var RPG = (function () {
 // Game Start ----------
 new RPG();
 //----------------------
-},{"./AssetLoader":1,"./Render/Renderer":13,"./Settings":15,"./World/WorldController":18}]},{},[19])
+},{"./AssetLoader":1,"./Render/Renderer":16,"./Settings":18,"./World/WorldController":21}]},{},[22])
 //# sourceMappingURL=rpgcompiled.js.map

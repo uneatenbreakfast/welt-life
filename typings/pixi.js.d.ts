@@ -1411,6 +1411,7 @@ declare module PIXI {
         protected updateText(respectDirty?: boolean): void;
         protected drawLetterSpacing(text: string, x: number, y: number, isStroke?: boolean): void;
         protected updateTexture(): void;
+        setText(text:string ): void;
         renderWebGL(renderer: WebGLRenderer): void;
         protected _renderCanvas(renderer: CanvasRenderer): void;
         protected wordWrap(text: string): string;

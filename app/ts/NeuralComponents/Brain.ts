@@ -1,6 +1,7 @@
 import { Func } from '../World/Func';
 import { NeuralBranch } from './NeuralBranch';
 import { NeuronMemory } from "./NeuronMemory";
+import { OutputAction } from "../Models/Constants";
 export class Brain{
     private memory:Array<NeuronMemory>;
     private greyMatter:Array<NeuralBranch>;
@@ -11,7 +12,8 @@ export class Brain{
         this.greyMatter = new Array<NeuralBranch>();
         this.usedInputVNeuralBranch = new Array<Array<boolean>>();
 
-        var availableActions = ["left","right","up","down","stand"];
+        var availableActions = [OutputAction.LEFT, OutputAction.RIGHT, OutputAction.UP, OutputAction.DOWN,OutputAction.STAND];
+
         for(var i=0; i < 20; i++){
             var n = new NeuralBranch();
             n.generate(availableActions);
@@ -25,6 +27,7 @@ export class Brain{
         var inputsStr = inputs.join("-");
 
         if(this.usedInputVNeuralBranch[inputsStr] == null){
+            //console.log("inputs:", inputsStr);
             this.usedInputVNeuralBranch[inputsStr] = [];
         }
         
