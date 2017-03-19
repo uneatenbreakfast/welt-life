@@ -746,6 +746,12 @@ var Func = (function () {
             array.splice(index, 1);
         }
     };
+    Func.RemoveWorldObject = function (array, item) {
+        var index = Func.GetIdIndex(array, item.id);
+        if (index > -1) {
+            array.splice(index, 1);
+        }
+    };
     Func.GetIdIndex = function (array, item) {
         var res = -1;
         array.forEach(function (x, i) {
@@ -788,7 +794,7 @@ var Poffin_1 = require("../Character/Poffin");
 var Creature_1 = require("../Character/Creature");
 var WorldController = (function () {
     function WorldController() {
-        this.spawnAmount = 10;
+        this.spawnAmount = 5;
         this.spawnTimerMax = 1000;
         this.spawnTimer = 1000;
         this.stage = new PIXI.Sprite();
@@ -799,6 +805,7 @@ var WorldController = (function () {
         this.addInformation();
         this.bestStats = new CreatureStats_1.CreatureStats();
         this.clickHandlers();
+        this.overworldNumObjects = 0;
     }
     WorldController.getInstance = function () {
         if (this._singleton == null) {
@@ -828,6 +835,57 @@ var WorldController = (function () {
                 }
             }
         });
+    };
+    WorldController.prototype.tickTock = function () {
+        // Sort Z-Index
+        this.stage.children.sort(function (obj1, obj2) {
+            return obj1.position.y - obj2.position.y;
+        });
+        // Run all Objects
+        for (var _i = 0, _a = this.displayList; _i < _a.length; _i++) {
+            var char = _a[_i];
+            char.tick();
+        }
+        var _loop_1 = function (food) {
+            if (food.markAsDeleted) {
+                return "continue";
+            }
+            this_1.creatureList.forEach(function (cre) {
+                if (Math.abs(cre.x - food.x) < 20) {
+                    if (Math.abs(cre.y - food.y) < 20) {
+                        if (food.markAsDeleted) {
+                            return;
+                        }
+                        cre.reproduce();
+                        food.removeWorldObject();
+                    }
+                }
+            });
+        };
+        var this_1 = this;
+        // Is food Eaten
+        for (var _b = 0, _c = this.foodList; _b < _c.length; _b++) {
+            var food = _c[_b];
+            _loop_1(food);
+        }
+        var tempDisplayList = this.displayList.slice(0);
+        for (var _d = 0, tempDisplayList_1 = tempDisplayList; _d < tempDisplayList_1.length; _d++) {
+            var disobj = tempDisplayList_1[_d];
+            if (disobj.markAsDeleted) {
+                this.stage.removeChild(disobj.GetSprite());
+                Func_1.Func.RemoveWorldObject(this.displayList, disobj);
+                Func_1.Func.RemoveWorldObject(this.creatureList, disobj);
+                Func_1.Func.RemoveWorldObject(this.foodList, disobj);
+            }
+        }
+        // Run world clock
+        this.spawnTimer--;
+        if (this.spawnTimer <= 0) {
+            this.spawnTimer = this.spawnTimerMax;
+            this.spawn();
+        }
+        // worldBillBoard
+        this.updateWorldBillBoard();
     };
     WorldController.prototype.addInformation = function () {
         var normStyle = new TextFormat_1.TextFormat();
@@ -890,57 +948,6 @@ var WorldController = (function () {
         this.foodList.push(food);
         return food;
     };
-    WorldController.prototype.tickTock = function () {
-        // Sort Z-Index
-        this.stage.children.sort(function (obj1, obj2) {
-            return obj1.position.y - obj2.position.y;
-        });
-        // Run all Objects
-        for (var _i = 0, _a = this.displayList; _i < _a.length; _i++) {
-            var char = _a[_i];
-            char.tick();
-        }
-        var _loop_1 = function (food) {
-            if (food.markAsDeleted) {
-                return "continue";
-            }
-            this_1.creatureList.forEach(function (cre) {
-                if (Math.abs(cre.x - food.x) < 20) {
-                    if (Math.abs(cre.y - food.y) < 20) {
-                        if (food.markAsDeleted) {
-                            return;
-                        }
-                        cre.reproduce();
-                        food.removeWorldObject();
-                    }
-                }
-            });
-        };
-        var this_1 = this;
-        // Is food Eaten
-        for (var _b = 0, _c = this.foodList; _b < _c.length; _b++) {
-            var food = _c[_b];
-            _loop_1(food);
-        }
-        // Clear deleted objects
-        for (var _d = 0, _e = this.displayList; _d < _e.length; _d++) {
-            var disobj = _e[_d];
-            if (disobj.markAsDeleted) {
-                this.stage.removeChild(disobj.GetSprite());
-                Func_1.Func.RemoveItem(this.displayList, disobj);
-                Func_1.Func.RemoveItem(this.creatureList, disobj);
-                Func_1.Func.RemoveItem(this.foodList, disobj);
-            }
-        }
-        // Run world clock
-        this.spawnTimer--;
-        if (this.spawnTimer <= 0) {
-            this.spawnTimer = this.spawnTimerMax;
-            this.spawn();
-        }
-        // worldBillBoard
-        this.updateWorldBillBoard();
-    };
     WorldController.prototype.getNearbyWorldObjects = function (currentCreature, currentPoint) {
         var nearbyObjects = new Array();
         for (var o = -1; o < 2; o++) {
@@ -974,20 +981,11 @@ var WorldController = (function () {
     };
     WorldController.prototype.removeWorldObject = function (currentObject, lastPoint) {
         if (lastPoint.x > -1) {
-            // remove the currentObject if it's still at the same place
-            if (this.quadGridDisplayList[lastPoint.x][lastPoint.y][lastPoint.z]) {
-                if (this.quadGridDisplayList[lastPoint.x][lastPoint.y][lastPoint.z].id == currentObject.id) {
-                    this.quadGridDisplayList[lastPoint.x][lastPoint.y].splice(lastPoint.z, 1);
-                    return;
-                }
-            }
-            // Otherwise, look for it then delete it
             var newIndex = Func_1.Func.GetIdIndex(this.quadGridDisplayList[lastPoint.x][lastPoint.y], currentObject.id);
             this.quadGridDisplayList[lastPoint.x][lastPoint.y].splice(newIndex, 1);
         }
     };
     WorldController.prototype.updateObjectPosition = function (currentObject, currentPoint, lastPoint) {
-        // Ignore creature's first position
         this.removeWorldObject(currentObject, lastPoint);
         // Create Arrays if empty
         if (this.quadGridDisplayList[currentPoint.x] == null) {

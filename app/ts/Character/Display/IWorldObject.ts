@@ -9,6 +9,8 @@ export interface IWorldObject{
   y:number;
   world:WorldController;
   markAsDeleted:boolean;
+
+  tick();
 }
 
 export enum WorldTypes{

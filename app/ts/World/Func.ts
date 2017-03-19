@@ -11,6 +11,14 @@ export class Func{
         }
     }
 
+    public static RemoveWorldObject(array:Array<IWorldObject>, item:IWorldObject):void{
+        var index = Func.GetIdIndex(array, item.id);
+        if (index > -1) {
+            array.splice(index, 1);
+        }
+    }
+
+
     public static GetIdIndex(array:Array<IWorldObject>, item:number):number{
         var res = -1;
         array.forEach((x, i) => {

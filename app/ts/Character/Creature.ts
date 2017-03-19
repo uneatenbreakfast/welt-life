@@ -128,9 +128,7 @@ export class Creature extends WorldObject{
         this.y = 0;
       }
 
-      var currentPosition = new PositionPoint(
-                                  Math.floor(this.x/Settings.gridSize),
-                                  Math.floor(this.y/Settings.gridSize), -1);
+      var currentPosition = new PositionPoint(Math.floor(this.x/Settings.gridSize), Math.floor(this.y/Settings.gridSize), -1);
 
       if(currentPosition.x != this.lastPositionPoint.x && currentPosition.y != this.lastPositionPoint.y){
         currentPosition.z = this.world.updateObjectPosition(this, currentPosition, this.lastPositionPoint);
