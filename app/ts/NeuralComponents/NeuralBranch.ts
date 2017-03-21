@@ -17,4 +17,11 @@ export class NeuralBranch{
         this.actions.push(new NeuralActions(ActionTypes.COMPARED_TO_VAL, Func.Sample(vals)));
         this.actions.push(new NeuralActions(ActionTypes.DO_ACTION, Func.Sample(availableActions)));
     }
+
+    controlGenerate(availableActions){
+        this.actions.push(new NeuralActions(ActionTypes.INPUT));
+        this.actions.push(new NeuralActions(ActionTypes.EQUAL_TO));
+        this.actions.push(new NeuralActions(ActionTypes.COMPARED_TO_VAL, 0));
+        this.actions.push(new NeuralActions(ActionTypes.DO_ACTION, Func.Sample(availableActions)));
+    }
 }

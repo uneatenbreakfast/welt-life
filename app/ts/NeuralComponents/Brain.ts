@@ -71,15 +71,8 @@ export class Brain{
         }
     }
 
-    public AddOptions(grey:Array<NeuralBranch>):void{
-        this.greyMatter = this.greyMatter.concat(grey);
-    }
      public addMemories(mem:Array<NeuronMemory>):void{
         this.memory = this.memory.concat(mem);
-    }
-
-    public getOptions():Array<NeuralBranch>{
-        return this.greyMatter;
     }
 
     public getMemories():Array<NeuronMemory>{

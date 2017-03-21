@@ -1,3 +1,4 @@
+import { ControlCreature } from '../Character/ControlCreature';
 import { WorldObject } from '../Character/Display/WorldObject';
 import { PositionPoint } from '../Models/PositionPoint';
 import { IWorldObject } from '../Character/Display/IWorldObject';
@@ -23,7 +24,9 @@ export class WorldController{
     private spawnTimer:number = 1000;
     private worldBillBoard:PIXI.Text;
     private bestCreature:Creature;
+    private bestControlCreature:Creature;
     private bestStats:CreatureStats;
+    private bestControlStats:CreatureStats;
 
     private overworldNumObjects:number;
 
@@ -37,6 +40,7 @@ export class WorldController{
 
         this.addInformation();
         this.bestStats = new CreatureStats();
+        this.bestControlStats = new CreatureStats();
         this.clickHandlers();
         this.overworldNumObjects = 0;
     }
@@ -129,48 +133,81 @@ export class WorldController{
     private addInformation():void{
         var normStyle = new TextFormat();
 
-        this.worldBillBoard = new PIXI.Text("", normStyle);
+        this.worldBillBoard = new PIXI.Text();
         this.worldBillBoard.x = 20;
         this.worldBillBoard.y = 20;
+        this.worldBillBoard.style = normStyle;
         //this.worldBillBoard.height = 200;
 
         this.stage.addChild(this.worldBillBoard);
     }
     private updateWorldBillBoard():void{
-        var txt = "Best HP: "+ this.bestStats.HP;
+        var txt = "Best PikaCreature \n";
+        txt += "HP: "   + this.bestStats.HP + "\n";
+        txt += "Gen: "  + this.bestStats.Generation + "\n";
+        txt += "\n";
+
+        txt += "Best ControlCreature";
+        txt += "HP: "   + this.bestControlStats.HP + "\n";
+        txt += "Gen: "  + this.bestControlStats.Generation + "\n";
+        txt += "\n";
+
         this.worldBillBoard.text = txt;
     }
 
     public trackCreature(cre:Creature):void{
-        if(this.bestCreature == null){
-            this.bestCreature = cre;
-            
-        }
 
-        if(cre.getHp() > this.bestStats.HP){
-            this.bestCreature = cre;
-            this.bestStats.HP = cre.getHp();
-        }
+       if(cre instanceof Creature){
+            // PikaCreature
+           
+            if(this.bestCreature == null){
+                this.bestCreature = cre;
+            }
+
+            if(cre.getHp() > this.bestStats.HP){
+                this.bestCreature = cre;
+
+                this.bestStats.HP = cre.getHp();
+                this.bestStats.Generation = cre.generation;
+            }
+       }
+
+        
+       if(cre instanceof ControlCreature){
+            // ControlCreature
+            if(this.bestControlCreature == null){
+                this.bestControlCreature = cre;
+            }
+
+            if(cre.getHp() > this.bestControlStats.HP){
+                this.bestControlCreature = cre;
+
+                this.bestControlStats.HP = cre.getHp();
+                this.bestControlStats.Generation = cre.generation;
+            }
+       }
     }
 
     public spawn():void{
         for(var i=0; i< this.spawnAmount; i++){
-            //this.addFood();
-            
-
+            this.addFood();
             this.addCreature();
-
+            this.addControlCreature();
         }
-
-         var food = this.addFood();
-        food.x = Settings.stageWidth / 2;
-        food.y = Settings.stageHeight / 2;
-        food.init();
     }
 
     public reproduce(brain:Brain, parent:Creature):void{
         var child = this.addCreature();
         child.addParentMemories(brain);
+        child.resize(0.3);
+        child.generation = parent.generation + 1;
+        child.x = parent.x + 20;
+
+        this.trackCreature(parent);
+    }
+
+    public reproduceControl(brain:Brain, parent:Creature):void{
+        var child = this.addControlCreature();
         child.resize(0.3);
         child.generation = parent.generation + 1;
         child.x = parent.x + 20;
@@ -192,6 +229,17 @@ export class WorldController{
         this.creatureList.push(pika);
 
         return pika;
+    }
+
+    private addControlCreature():Creature{
+        var bulba = new ControlCreature("SquirtCreature");
+        bulba.x = Settings.stageWidth * Math.random();
+        bulba.y = Settings.stageHeight * Math.random();
+        bulba.init();
+        this.AddGameChild(bulba);
+        this.creatureList.push(bulba);
+
+        return bulba;
     }
 
     private addFood():Poffin{

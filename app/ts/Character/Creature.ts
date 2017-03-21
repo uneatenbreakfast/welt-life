@@ -20,13 +20,13 @@ export class Creature extends WorldObject{
 
   // Stats
   public generation:number;
-  private hp:number;
+  protected hp:number;
   private walkSpeed:number;
   private runSpeed:number;
 
   // 
   private memoryBank:TargetMemoryObject[];
-  private brain:Brain;
+  protected brain:Brain;
 
   constructor(armature:string){
     super(armature);
@@ -61,7 +61,7 @@ export class Creature extends WorldObject{
     this.GetSprite().addChild(this.statTxt);
   }
 
-  private updateStats():void{
+  protected updateStats():void{
     var text = 'Gen:'+ this.generation +'\n';
     text += 'HP:'+ this.hp +'\n';
 
@@ -74,7 +74,7 @@ export class Creature extends WorldObject{
     this.updateStats();
   }
 
-  private age():void{
+  protected age():void{
     this.hp--;
     if(this.hp < 0){
         this.removeWorldObject();
@@ -136,7 +136,7 @@ export class Creature extends WorldObject{
       }
   }
 
-  private think():void {
+  protected think():void {
     var targetFromMemory = this.findTarget();
     if(targetFromMemory == null){
       return;

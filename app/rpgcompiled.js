@@ -60,7 +60,39 @@ var AssetLoader = (function () {
     return AssetLoader;
 }());
 exports.AssetLoader = AssetLoader;
-},{"./Render/Renderer":16,"./Render/SpriteStorage":17}],2:[function(require,module,exports){
+},{"./Render/Renderer":17,"./Render/SpriteStorage":18}],2:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var Constants_1 = require("../Models/Constants");
+var NeuralBranch_1 = require("../NeuralComponents/NeuralBranch");
+var NeuronMemory_1 = require("../NeuralComponents/NeuronMemory");
+var NeuralReader_1 = require("../NeuralComponents/NeuralReader");
+var Creature_1 = require("./Creature");
+var ControlCreature = (function (_super) {
+    __extends(ControlCreature, _super);
+    function ControlCreature(armature) {
+        return _super.call(this, armature) || this;
+    }
+    ControlCreature.prototype.think = function () {
+        // Pick option
+        var chosenOption = new NeuronMemory_1.NeuronMemory([0]);
+        var availableActions = [Constants_1.OutputAction.LEFT, Constants_1.OutputAction.RIGHT, Constants_1.OutputAction.UP, Constants_1.OutputAction.DOWN, Constants_1.OutputAction.STAND];
+        chosenOption.neuralBranch = new NeuralBranch_1.NeuralBranch();
+        chosenOption.neuralBranch.controlGenerate(availableActions);
+        NeuralReader_1.NeuralReader.CarryOutAction(this, chosenOption, [0], this.brain);
+    };
+    ControlCreature.prototype.reproduce = function () {
+        this.hp += 1000;
+        this.world.reproduceControl(this.brain, this);
+    };
+    return ControlCreature;
+}(Creature_1.Creature));
+exports.ControlCreature = ControlCreature;
+},{"../Models/Constants":10,"../NeuralComponents/NeuralBranch":14,"../NeuralComponents/NeuralReader":15,"../NeuralComponents/NeuronMemory":16,"./Creature":3}],3:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -217,7 +249,7 @@ var Creature = (function (_super) {
     return Creature;
 }(WorldObject_1.WorldObject));
 exports.Creature = Creature;
-},{"../Models/Constants":9,"../Models/PositionPoint":10,"../NeuralComponents/Brain":11,"../NeuralComponents/NeuralReader":14,"../Settings":18,"../World/Func":19,"../World/TextFormat":20,"./Display/IWorldObject":5,"./Display/WorldObject":6,"./TargetMemoryObject":8}],3:[function(require,module,exports){
+},{"../Models/Constants":10,"../Models/PositionPoint":11,"../NeuralComponents/Brain":12,"../NeuralComponents/NeuralReader":15,"../Settings":19,"../World/Func":20,"../World/TextFormat":21,"./Display/IWorldObject":6,"./Display/WorldObject":7,"./TargetMemoryObject":9}],4:[function(require,module,exports){
 "use strict";
 var CreatureStats = (function () {
     function CreatureStats() {
@@ -226,7 +258,7 @@ var CreatureStats = (function () {
     return CreatureStats;
 }());
 exports.CreatureStats = CreatureStats;
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 "use strict";
 var SpriteStorage_1 = require("../../Render/SpriteStorage");
 var LoadedDisplaySprite = (function () {
@@ -306,14 +338,14 @@ var LoadedDisplaySprite = (function () {
     return LoadedDisplaySprite;
 }());
 exports.LoadedDisplaySprite = LoadedDisplaySprite;
-},{"../../Render/SpriteStorage":17}],5:[function(require,module,exports){
+},{"../../Render/SpriteStorage":18}],6:[function(require,module,exports){
 "use strict";
 var WorldTypes;
 (function (WorldTypes) {
     WorldTypes[WorldTypes["CREATURE"] = 0] = "CREATURE";
     WorldTypes[WorldTypes["FOOD"] = 1] = "FOOD";
 })(WorldTypes = exports.WorldTypes || (exports.WorldTypes = {}));
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -337,7 +369,7 @@ var WorldObject = (function (_super) {
     return WorldObject;
 }(DisplayCharacter_1.LoadedDisplaySprite));
 exports.WorldObject = WorldObject;
-},{"../../World/WorldController":21,"./DisplayCharacter":4}],7:[function(require,module,exports){
+},{"../../World/WorldController":22,"./DisplayCharacter":5}],8:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -363,7 +395,7 @@ var Poffin = (function (_super) {
     return Poffin;
 }(WorldObject_1.WorldObject));
 exports.Poffin = Poffin;
-},{"../Models/PositionPoint":10,"../Settings":18,"./Display/IWorldObject":5,"./Display/WorldObject":6}],8:[function(require,module,exports){
+},{"../Models/PositionPoint":11,"../Settings":19,"./Display/IWorldObject":6,"./Display/WorldObject":7}],9:[function(require,module,exports){
 "use strict";
 var TargetMemoryObject = (function () {
     function TargetMemoryObject(worldObj) {
@@ -424,7 +456,7 @@ var TargetMemoryObject = (function () {
     return TargetMemoryObject;
 }());
 exports.TargetMemoryObject = TargetMemoryObject;
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 var OutputAction;
 (function (OutputAction) {
@@ -434,7 +466,7 @@ var OutputAction;
     OutputAction[OutputAction["DOWN"] = 3] = "DOWN";
     OutputAction[OutputAction["STAND"] = 4] = "STAND";
 })(OutputAction = exports.OutputAction || (exports.OutputAction = {}));
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 var PositionPoint = (function () {
     function PositionPoint(_x, _y, _z) {
@@ -445,7 +477,7 @@ var PositionPoint = (function () {
     return PositionPoint;
 }());
 exports.PositionPoint = PositionPoint;
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 "use strict";
 var Func_1 = require("../World/Func");
 var NeuralBranch_1 = require("./NeuralBranch");
@@ -502,14 +534,8 @@ var Brain = (function () {
             this.memory.push(neu);
         }
     };
-    Brain.prototype.AddOptions = function (grey) {
-        this.greyMatter = this.greyMatter.concat(grey);
-    };
     Brain.prototype.addMemories = function (mem) {
         this.memory = this.memory.concat(mem);
-    };
-    Brain.prototype.getOptions = function () {
-        return this.greyMatter;
     };
     Brain.prototype.getMemories = function () {
         return this.memory;
@@ -517,7 +543,7 @@ var Brain = (function () {
     return Brain;
 }());
 exports.Brain = Brain;
-},{"../Models/Constants":9,"../World/Func":19,"./NeuralBranch":13,"./NeuronMemory":15}],12:[function(require,module,exports){
+},{"../Models/Constants":10,"../World/Func":20,"./NeuralBranch":14,"./NeuronMemory":16}],13:[function(require,module,exports){
 "use strict";
 var Func_1 = require("../World/Func");
 var NeuralActions = (function () {
@@ -545,7 +571,7 @@ var ActionTypes;
     ActionTypes[ActionTypes["AND"] = 6] = "AND";
     ActionTypes[ActionTypes["OR"] = 7] = "OR";
 })(ActionTypes = exports.ActionTypes || (exports.ActionTypes = {}));
-},{"../World/Func":19}],13:[function(require,module,exports){
+},{"../World/Func":20}],14:[function(require,module,exports){
 "use strict";
 var Func_1 = require("../World/Func");
 var NeuralActions_1 = require("./NeuralActions");
@@ -561,10 +587,16 @@ var NeuralBranch = (function () {
         this.actions.push(new NeuralActions_1.NeuralActions(NeuralActions_1.ActionTypes.COMPARED_TO_VAL, Func_1.Func.Sample(vals)));
         this.actions.push(new NeuralActions_1.NeuralActions(NeuralActions_1.ActionTypes.DO_ACTION, Func_1.Func.Sample(availableActions)));
     };
+    NeuralBranch.prototype.controlGenerate = function (availableActions) {
+        this.actions.push(new NeuralActions_1.NeuralActions(NeuralActions_1.ActionTypes.INPUT));
+        this.actions.push(new NeuralActions_1.NeuralActions(NeuralActions_1.ActionTypes.EQUAL_TO));
+        this.actions.push(new NeuralActions_1.NeuralActions(NeuralActions_1.ActionTypes.COMPARED_TO_VAL, 0));
+        this.actions.push(new NeuralActions_1.NeuralActions(NeuralActions_1.ActionTypes.DO_ACTION, Func_1.Func.Sample(availableActions)));
+    };
     return NeuralBranch;
 }());
 exports.NeuralBranch = NeuralBranch;
-},{"../World/Func":19,"./NeuralActions":12}],14:[function(require,module,exports){
+},{"../World/Func":20,"./NeuralActions":13}],15:[function(require,module,exports){
 "use strict";
 var NeuralActions_1 = require("./NeuralActions");
 var NeuralReader = (function () {
@@ -608,7 +640,7 @@ var NeuralReader = (function () {
     return NeuralReader;
 }());
 exports.NeuralReader = NeuralReader;
-},{"./NeuralActions":12}],15:[function(require,module,exports){
+},{"./NeuralActions":13}],16:[function(require,module,exports){
 "use strict";
 var NeuronMemory = (function () {
     function NeuronMemory(inputs) {
@@ -632,7 +664,7 @@ var NeuronMemory = (function () {
     return NeuronMemory;
 }());
 exports.NeuronMemory = NeuronMemory;
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 "use strict";
 var WorldController_1 = require("../World/WorldController");
 var Settings_1 = require("../Settings");
@@ -676,7 +708,7 @@ var Renderer = (function () {
     return Renderer;
 }());
 exports.Renderer = Renderer;
-},{"../Settings":18,"../World/WorldController":21}],17:[function(require,module,exports){
+},{"../Settings":19,"../World/WorldController":22}],18:[function(require,module,exports){
 "use strict";
 var SpriteStorage = (function () {
     function SpriteStorage() {
@@ -717,7 +749,7 @@ var SpriteStorage = (function () {
     return SpriteStorage;
 }());
 exports.SpriteStorage = SpriteStorage;
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
 var Settings = (function () {
     function Settings() {
@@ -732,7 +764,7 @@ var Settings = (function () {
     return Settings;
 }());
 exports.Settings = Settings;
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 "use strict";
 var Func = (function () {
     function Func() {
@@ -765,7 +797,7 @@ var Func = (function () {
     return Func;
 }());
 exports.Func = Func;
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -784,8 +816,9 @@ var TextFormat = (function (_super) {
     return TextFormat;
 }(PIXI.TextStyle));
 exports.TextFormat = TextFormat;
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 "use strict";
+var ControlCreature_1 = require("../Character/ControlCreature");
 var CreatureStats_1 = require("../Character/CreatureStats");
 var TextFormat_1 = require("./TextFormat");
 var Func_1 = require("./Func");
@@ -804,6 +837,7 @@ var WorldController = (function () {
         this.creatureList = [];
         this.addInformation();
         this.bestStats = new CreatureStats_1.CreatureStats();
+        this.bestControlStats = new CreatureStats_1.CreatureStats();
         this.clickHandlers();
         this.overworldNumObjects = 0;
     }
@@ -889,38 +923,65 @@ var WorldController = (function () {
     };
     WorldController.prototype.addInformation = function () {
         var normStyle = new TextFormat_1.TextFormat();
-        this.worldBillBoard = new PIXI.Text("", normStyle);
+        this.worldBillBoard = new PIXI.Text();
         this.worldBillBoard.x = 20;
         this.worldBillBoard.y = 20;
+        this.worldBillBoard.style = normStyle;
         //this.worldBillBoard.height = 200;
         this.stage.addChild(this.worldBillBoard);
     };
     WorldController.prototype.updateWorldBillBoard = function () {
-        var txt = "Best HP: " + this.bestStats.HP;
+        var txt = "Best PikaCreature \n";
+        txt += "HP: " + this.bestStats.HP + "\n";
+        txt += "Gen: " + this.bestStats.Generation + "\n";
+        txt += "\n";
+        txt += "Best ControlCreature";
+        txt += "HP: " + this.bestControlStats.HP + "\n";
+        txt += "Gen: " + this.bestControlStats.Generation + "\n";
+        txt += "\n";
         this.worldBillBoard.text = txt;
     };
     WorldController.prototype.trackCreature = function (cre) {
-        if (this.bestCreature == null) {
-            this.bestCreature = cre;
+        if (cre instanceof Creature_1.Creature) {
+            // PikaCreature
+            if (this.bestCreature == null) {
+                this.bestCreature = cre;
+            }
+            if (cre.getHp() > this.bestStats.HP) {
+                this.bestCreature = cre;
+                this.bestStats.HP = cre.getHp();
+                this.bestStats.Generation = cre.generation;
+            }
         }
-        if (cre.getHp() > this.bestStats.HP) {
-            this.bestCreature = cre;
-            this.bestStats.HP = cre.getHp();
+        if (cre instanceof ControlCreature_1.ControlCreature) {
+            // ControlCreature
+            if (this.bestControlCreature == null) {
+                this.bestControlCreature = cre;
+            }
+            if (cre.getHp() > this.bestControlStats.HP) {
+                this.bestControlCreature = cre;
+                this.bestControlStats.HP = cre.getHp();
+                this.bestControlStats.Generation = cre.generation;
+            }
         }
     };
     WorldController.prototype.spawn = function () {
         for (var i = 0; i < this.spawnAmount; i++) {
-            //this.addFood();
+            this.addFood();
             this.addCreature();
+            this.addControlCreature();
         }
-        var food = this.addFood();
-        food.x = Settings_1.Settings.stageWidth / 2;
-        food.y = Settings_1.Settings.stageHeight / 2;
-        food.init();
     };
     WorldController.prototype.reproduce = function (brain, parent) {
         var child = this.addCreature();
         child.addParentMemories(brain);
+        child.resize(0.3);
+        child.generation = parent.generation + 1;
+        child.x = parent.x + 20;
+        this.trackCreature(parent);
+    };
+    WorldController.prototype.reproduceControl = function (brain, parent) {
+        var child = this.addControlCreature();
         child.resize(0.3);
         child.generation = parent.generation + 1;
         child.x = parent.x + 20;
@@ -938,6 +999,15 @@ var WorldController = (function () {
         this.AddGameChild(pika);
         this.creatureList.push(pika);
         return pika;
+    };
+    WorldController.prototype.addControlCreature = function () {
+        var bulba = new ControlCreature_1.ControlCreature("SquirtCreature");
+        bulba.x = Settings_1.Settings.stageWidth * Math.random();
+        bulba.y = Settings_1.Settings.stageHeight * Math.random();
+        bulba.init();
+        this.AddGameChild(bulba);
+        this.creatureList.push(bulba);
+        return bulba;
     };
     WorldController.prototype.addFood = function () {
         var food = new Poffin_1.Poffin();
@@ -1001,7 +1071,7 @@ var WorldController = (function () {
     return WorldController;
 }());
 exports.WorldController = WorldController;
-},{"../Character/Creature":2,"../Character/CreatureStats":3,"../Character/Poffin":7,"../Settings":18,"./Func":19,"./TextFormat":20}],22:[function(require,module,exports){
+},{"../Character/ControlCreature":2,"../Character/Creature":3,"../Character/CreatureStats":4,"../Character/Poffin":8,"../Settings":19,"./Func":20,"./TextFormat":21}],23:[function(require,module,exports){
 "use strict";
 var Settings_1 = require("./Settings");
 var WorldController_1 = require("./World/WorldController");
@@ -1039,5 +1109,5 @@ var RPG = (function () {
 // Game Start ----------
 new RPG();
 //----------------------
-},{"./AssetLoader":1,"./Render/Renderer":16,"./Settings":18,"./World/WorldController":21}]},{},[22])
+},{"./AssetLoader":1,"./Render/Renderer":17,"./Settings":19,"./World/WorldController":22}]},{},[23])
 //# sourceMappingURL=rpgcompiled.js.map
